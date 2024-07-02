@@ -1,0 +1,16 @@
+*.pyc
+__pycache__/
+
+
+env/
+venv/
+ENV/
+ENV.bak/
+venv.bak/
+
+.idea/
+*.iml
+misc.xml
+modules.xml
+vcs.xml
+inspectionProfiles/
