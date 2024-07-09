@@ -9,11 +9,9 @@ from sqlalchemy import Column, String, Integer, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
-# FastAPI app initialization
 app = FastAPI()
 
-# SQLAlchemy models and database setup
-DATABASE_URL = "sqlite:///./test.db"  # Example using SQLite
+DATABASE_URL = "sqlite:///./test.db"
 
 Base = declarative_base()
 
@@ -32,7 +30,6 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
 
 
-# Dependency to get DB session
 def get_db():
     db = SessionLocal()
     try:
@@ -41,7 +38,6 @@ def get_db():
         db.close()
 
 
-# CRUD functions
 def create_screenshot(db: Session, screenshot: Screenshot):
     db.add(screenshot)
     db.commit()
@@ -61,13 +57,11 @@ def get_screenshots_by_type(db: Session, type: str):
     return db.query(Screenshot).filter(Screenshot.type == type).all()
 
 
-# Health check endpoint
 @app.get("/isalive")
 def is_alive():
     return {"status": "alive"}
 
 
-# Screenshot capturing endpoint
 @app.post("/screenshots")
 def start_crawling(url: str = Form(...), num_links: int = Form(...), db: Session = Depends(get_db)):
     # Ensure the screenshots directory exists
@@ -99,7 +93,6 @@ def start_crawling(url: str = Form(...), num_links: int = Form(...), db: Session
     return {"message": "Screenshots taken and metadata saved"}
 
 
-# Retrieve screenshots endpoints
 @app.get("/screenshots/")
 def read_screenshots(url: str = None, type: str = None, db: Session = Depends(get_db)):
     if url:
