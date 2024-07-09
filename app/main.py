@@ -64,10 +64,8 @@ def is_alive():
 
 @app.post("/screenshots")
 def start_crawling(url: str = Form(...), num_links: int = Form(...), db: Session = Depends(get_db)):
-    # Ensure the screenshots directory exists
     os.makedirs("screenshots", exist_ok=True)
 
-    # Call a separate Python script to handle Playwright operations
     script_path = os.path.join(os.path.dirname(__file__), "playwright_script.py")
     result = subprocess.run([sys.executable, script_path, url, str(num_links)], capture_output=True, text=True)
 
