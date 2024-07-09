@@ -74,7 +74,6 @@ def start_crawling(url: str = Form(...), num_links: int = Form(...), db: Session
     if result.returncode != 0:
         return {"error": result.stderr}
 
-    # Process the output and save to database
     for line in result.stdout.split('\n'):
         if line.startswith("Screenshot:"):
             try:
