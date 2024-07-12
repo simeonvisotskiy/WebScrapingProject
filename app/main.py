@@ -2,16 +2,15 @@ import os
 import sys
 import subprocess
 import uuid
-import time
 from fastapi import FastAPI, Form, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse
 from sqlalchemy import Column, String, Integer, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
 app = FastAPI()
 
-DATABASE_URL = "sqlite:///./test.db"
+DATABASE_URL = "sqlite:///../test.db"
 
 Base = declarative_base()
 
@@ -39,10 +38,14 @@ def get_db():
 
 
 def create_screenshot(db: Session, screenshot: Screenshot):
-    db.add(screenshot)
-    db.commit()
-    db.refresh(screenshot)
-    return screenshot
+    try:
+        db.add(screenshot)
+        db.commit()
+        db.refresh(screenshot)
+        return screenshot
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 def get_screenshot(db: Session, screenshot_id: str):
@@ -64,16 +67,22 @@ def is_alive():
 
 @app.post("/screenshots")
 def start_crawling(url: str = Form(...), num_links: int = Form(...), db: Session = Depends(get_db)):
-    os.makedirs("screenshots", exist_ok=True)
+    unique_id = str(uuid.uuid4())
+
+    screenshots_dir = os.path.join(os.path.dirname(__file__), '../screenshots')
+    os.makedirs(screenshots_dir, exist_ok=True)
 
     script_path = os.path.join(os.path.dirname(__file__), "playwright_script.py")
-    result = subprocess.run([sys.executable, script_path, url, str(num_links)], capture_output=True, text=True)
+    result = subprocess.run([sys.executable, script_path, url, str(num_links), unique_id, screenshots_dir],
+                            capture_output=True, text=True)
 
     if result.returncode != 0:
         return {"error": result.stderr}
 
+    scrapable = False
     for line in result.stdout.split('\n'):
         if line.startswith("Screenshot:"):
+            scrapable = True
             try:
                 _, screenshot_id, url, type_, file_path, part = line.split('|')
                 screenshot = Screenshot(
@@ -87,16 +96,19 @@ def start_crawling(url: str = Form(...), num_links: int = Form(...), db: Session
             except Exception as e:
                 print(f"Failed to create screenshot entry: {e}")
 
-    return {"message": "Screenshots taken and metadata saved"}
+    if not scrapable:
+        error_message = {"error": "Website structure is inconsistent or not scrapable."}
+        screenshot = Screenshot(
+            id=unique_id,
+            url=url,
+            type="error",
+            file_path="",
+            part=0
+        )
+        create_screenshot(db, screenshot)
+        return JSONResponse(status_code=400, content=error_message)
 
-
-@app.get("/screenshots/")
-def read_screenshots(url: str = None, type: str = None, db: Session = Depends(get_db)):
-    if url:
-        return get_screenshots_by_url(db, url)
-    if type:
-        return get_screenshots_by_type(db, type)
-    return db.query(Screenshot).all()
+    return {"message": "Screenshots taken and metadata saved", "id": unique_id}
 
 
 @app.get("/screenshots/{screenshot_id}")
@@ -107,12 +119,20 @@ def get_screenshot_by_id(screenshot_id: str, db: Session = Depends(get_db)):
     return screenshot
 
 
-@app.get("/serve_screenshot/{screenshot_id}")
-def serve_screenshot(screenshot_id: str, db: Session = Depends(get_db)):
-    screenshot = get_screenshot(db, screenshot_id)
-    if screenshot is None:
-        raise HTTPException(status_code=404, detail="Screenshot not found")
-    return FileResponse(screenshot.file_path)
+@app.get("/screenshots/website/{website}")
+def get_screenshots_by_website(website: str, db: Session = Depends(get_db)):
+    screenshots = get_screenshots_by_url(db, website)
+    if not screenshots:
+        raise HTTPException(status_code=404, detail="No screenshots found for this website")
+    return screenshots
+
+
+@app.get("/screenshots/type/{type}")
+def get_screenshots_by_type_route(type: str, db: Session = Depends(get_db)):
+    screenshots = get_screenshots_by_type(db, type)
+    if not screenshots:
+        raise HTTPException(status_code=404, detail="No screenshots found for this type")
+    return screenshots
 
 
 if __name__ == "__main__":
