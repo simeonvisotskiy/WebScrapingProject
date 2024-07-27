@@ -11,7 +11,6 @@ def main(url, num_links, unique_id, screenshots_dir):
         page.goto(url)
 
         try:
-            # Get the total height of the page
             total_height = page.evaluate("document.body.scrollHeight")
             viewport_height = page.evaluate("window.innerHeight")
 
@@ -24,9 +23,8 @@ def main(url, num_links, unique_id, screenshots_dir):
 
                 if i < num_screenshots - 1:
                     page.evaluate(f"window.scrollBy(0, {viewport_height})")
-                    time.sleep(0.5)  # Allow time for the scroll action
+                    time.sleep(0.5)
 
-            # Crawling and taking screenshots of first num_links links
             links = page.eval_on_selector_all('a', 'elements => elements.map(e => e.href)')
             visited_links = set()
             visited_links.add(url)
