@@ -15,7 +15,6 @@ def is_alive():
 @app.post("/screenshots")
 def start_crawling(url: str = Form(...), num_links: int = Form(...), db: Session = Depends(get_db)):
     unique_id = str(uuid.uuid4())
-    scrapable = False
 
     screenshots_dir = os.path.join(os.path.dirname(__file__), 'screenshots')
     os.makedirs(screenshots_dir, exist_ok=True)
@@ -27,8 +26,9 @@ def start_crawling(url: str = Form(...), num_links: int = Form(...), db: Session
     if result.returncode != 0:
         return {"error": result.stderr}
 
+    scrapable = False
     screenshot_names = []
-    for line in result.stdout.split('\n'):
+    for line in result.stdout.splitlines():
         if line.startswith("Screenshot:"):
             scrapable = True
             try:
