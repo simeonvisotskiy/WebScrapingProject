@@ -44,4 +44,3 @@ def get_screenshot_by_name(db: Session, screenshot_name: str):
     return db.query(Screenshot).filter(Screenshot.id == screenshot_name).first()
 
 
-
