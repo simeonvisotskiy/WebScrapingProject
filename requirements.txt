@@ -1,7 +1,5 @@
 fastapi
 uvicorn
 sqlalchemy
+prometheus-client
 playwright
-uuid
-pydantic
-asyncpg
