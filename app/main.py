@@ -22,7 +22,7 @@ class Screenshot(Base):
     id = Column(String, primary_key=True, index=True)
     url = Column(String, index=True)
     type = Column(String)
-    file_path = Column(String)  # Necessary if you need to store file paths
+    file_path = Column(String)
     part = Column(Integer)
     parent_id = Column(String, nullable=True)
     scrapable = Column(Boolean, default=False)
@@ -30,7 +30,7 @@ class Screenshot(Base):
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
-logging.info("Database tables created")  # Useful for confirming table creation
+logging.info("Database tables created")
 
 def get_db():
     db = SessionLocal()
