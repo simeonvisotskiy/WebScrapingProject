@@ -31,7 +31,6 @@ def create_screenshot(db: Session, screenshot: Screenshot):
     try:
         db.add(screenshot)
         db.commit()
-        db.refresh(screenshot)
         return screenshot
     except Exception as e:
         db.rollback()
