@@ -3,6 +3,9 @@ import time
 import uuid
 from playwright.sync_api import sync_playwright
 import os
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 def take_screenshots(page, url, unique_id, screenshots_dir, part_prefix):
     total_height = page.evaluate("document.body.scrollHeight")
@@ -14,8 +17,8 @@ def take_screenshots(page, url, unique_id, screenshots_dir, part_prefix):
         screenshot_id = str(uuid.uuid4())
         file_path = os.path.join(screenshots_dir, f"{unique_id}_{screenshot_id}_{part_prefix}{i + 1}.png")
         page.screenshot(path=file_path)
-        screenshots.append((url, part_prefix, file_path))
-        print(f"Screenshot:|{screenshot_id}|{url}|{part_prefix}|{file_path}|{i + 1}")
+        screenshots.append((url, part_prefix, file_path, i+1))
+        logging.info(f"Screenshot:|{unique_id}|{screenshot_id}|")
 
         if i < num_screenshots - 1:
             page.evaluate(f"window.scrollBy(0, {viewport_height})")
