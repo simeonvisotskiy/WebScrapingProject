@@ -1,10 +1,12 @@
 import os
-import sys
 import uuid
-import subprocess
 from fastapi import FastAPI, Form, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db, create_screenshot, get_screenshot, get_screenshot_by_name, Screenshot
+from playwright_script import crawl_and_screenshot
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 
@@ -19,34 +21,33 @@ def start_crawling(url: str = Form(...), num_links: int = Form(...), db: Session
     screenshots_dir = os.path.join(os.path.dirname(__file__), 'screenshots')
     os.makedirs(screenshots_dir, exist_ok=True)
 
-    script_path = os.path.join(os.path.dirname(__file__), "playwright_script.py")
-    result = subprocess.run([sys.executable, script_path, url, str(num_links), unique_id, screenshots_dir],
-                            capture_output=True, text=True)
 
-    if result.returncode != 0:
-        return {"error": result.stderr}
+    try:
+        all_screenshots = crawl_and_screenshot(url, num_links, unique_id, screenshots_dir)
+    except Exception as e:
+        return {"error": str(e)}
 
     scrapable = False
     screenshot_names = []
-    for line in result.stdout.splitlines():
-        if line.startswith("Screenshot:"):
+    for screenshot_data in all_screenshots:
+        try:
+            url, part_prefix, file_path,part = screenshot_data
+            screenshot_id = file_path.split('_')[1]
+            screenshot_name = f"{unique_id}_{screenshot_id}"
+            screenshot = Screenshot(
+                id=screenshot_name,
+                url=url.rstrip('/'),
+                type=part_prefix,
+                file_path=file_path,
+                part=int(part),
+                parent_id=unique_id,
+                scrapable=True
+            )
+            create_screenshot(db, screenshot)
+            screenshot_names.append(screenshot_name)
             scrapable = True
-            try:
-                _, screenshot_id, url, type_, file_path, part = line.split('|')
-                screenshot_name = f"{unique_id}_{screenshot_id}"
-                screenshot = Screenshot(
-                    id=screenshot_name,
-                    url=url.rstrip('/'),
-                    type=type_,
-                    file_path=file_path,
-                    part=int(part),
-                    parent_id=unique_id,
-                    scrapable=True
-                )
-                create_screenshot(db, screenshot)
-                screenshot_names.append(screenshot_name)
-            except Exception as e:
-                print(f"Failed to create screenshot entry: {e}")
+        except Exception as e:
+            logging.info(f"Failed to create screenshot entry: {e}")
 
     parent_screenshot = Screenshot(
         id=unique_id,
